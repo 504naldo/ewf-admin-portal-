@@ -1,444 +1,130 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
-import type { Incident, User } from '@/lib/types';
-import { format } from 'date-fns';
+import { listIncidents, listTechnicians, updateIncident, type Incident, type Technician } from '@/lib/api-helpers';
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [technicians, setTechnicians] = useState<User[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const fetchData = async () => {
+  useEffect(() => {
+    loadData();
+  }, [statusFilter, searchTerm]);
+
+  const loadData = async () => {
     try {
       const [incidentsData, techsData] = await Promise.all([
-        api.listIncidents({ status: statusFilter, search: searchTerm }),
-        api.listTechnicians(),
+        listIncidents({ status: statusFilter, search: searchTerm }),
+        listTechnicians(),
       ]);
       setIncidents(incidentsData);
       setTechnicians(techsData);
-      setError('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to load data');
+    } catch (error) {
+      console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-    // Poll every 15 seconds
-    const interval = setInterval(fetchData, 15000);
-    return () => clearInterval(interval);
-  }, [statusFilter, searchTerm]);
-
-  const handleAssignTech = async (incidentId: number, techId: number) => {
+  const handleAssignTechnician = async (incidentId: number, technicianId: number) => {
     try {
-      await api.updateIncident(incidentId, { assignedTechId: techId });
-      await fetchData();
-      setSelectedIncident(null);
-    } catch (err: any) {
-      alert(err.message || 'Failed to assign technician');
+      await updateIncident(incidentId, { assigned_technician_id: technicianId });
+      loadData();
+    } catch (error) {
+      console.error('Failed to assign technician:', error);
     }
   };
 
-  const handleUpdateStatus = async (incidentId: number, status: Incident['status']) => {
+  const handleUpdateStatus = async (incidentId: number, status: string) => {
     try {
-      await api.updateIncident(incidentId, { status });
-      await fetchData();
-      setSelectedIncident(null);
-    } catch (err: any) {
-      alert(err.message || 'Failed to update status');
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'new':
-        return 'bg-red-100 text-red-800';
-      case 'assigned':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800';
-      case 'resolved':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      await updateIncident(incidentId, { status });
+      loadData();
+    } catch (error) {
+      console.error('Failed to update status:', error);
     }
   };
 
   if (loading) {
-    return <div className="text-center py-12">Loading incidents...</div>;
+    return <div className="p-8">Loading...</div>;
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <h1 className="text-2xl font-semibold text-gray-900">Incidents</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            Manage emergency incidents and assign technicians
-          </p>
-        </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:w-auto"
-          >
-            Create Incident
-          </button>
-        </div>
-      </div>
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-6">Incidents</h1>
 
-      {/* Filters */}
-      <div className="mt-6 flex gap-4">
+      <div className="mb-6 flex gap-4">
+        <input
+          type="text"
+          placeholder="Search incidents..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="px-4 py-2 border rounded-lg flex-1"
+        />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+          className="px-4 py-2 border rounded-lg"
         >
-          <option value="">All Statuses</option>
-          <option value="new">New</option>
-          <option value="assigned">Assigned</option>
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
           <option value="in_progress">In Progress</option>
-          <option value="resolved">Resolved</option>
+          <option value="completed">Completed</option>
         </select>
-        <input
-          type="text"
-          placeholder="Search by building ID, site name, or address..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-        />
       </div>
 
-      {error && (
-        <div className="mt-4 rounded-md bg-red-50 p-4">
-          <div className="text-sm text-red-800">{error}</div>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="mt-8 flex flex-col">
-        <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-          <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-              <table className="min-w-full divide-y divide-gray-300">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                      ID
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Status
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Building ID
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Site Name
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Assigned Tech
-                    </th>
-                    <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                      Created
-                    </th>
-                    <th className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {incidents.map((incident) => (
-                    <tr key={incident.id}>
-                      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                        #{incident.id}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        <span
-                          className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
-                            incident.status
-                          )}`}
-                        >
-                          {incident.status}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {incident.buildingId}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {incident.siteName}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {incident.assignedTech?.name || 'Unassigned'}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        {format(new Date(incident.createdAt), 'MMM d, yyyy HH:mm')}
-                      </td>
-                      <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                        <button
-                          onClick={() => setSelectedIncident(incident)}
-                          className="text-primary-600 hover:text-primary-900"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Incident Detail Modal */}
-      {selectedIncident && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-xl font-semibold">Incident #{selectedIncident.id}</h2>
-              <button
-                onClick={() => setSelectedIncident(null)}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
-                <select
-                  value={selectedIncident.status}
-                  onChange={(e) =>
-                    handleUpdateStatus(
-                      selectedIncident.id,
-                      e.target.value as Incident['status']
-                    )
-                  }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                >
-                  <option value="new">New</option>
-                  <option value="assigned">Assigned</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Assign Technician
-                </label>
-                <select
-                  value={selectedIncident.assignedTechId || ''}
-                  onChange={(e) =>
-                    handleAssignTech(selectedIncident.id, Number(e.target.value))
-                  }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                >
-                  <option value="">Unassigned</option>
-                  {technicians.map((tech) => (
-                    <option key={tech.id} value={tech.id}>
-                      {tech.name} ({tech.availability})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Building ID</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedIncident.buildingId}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Site Name</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedIncident.siteName}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Address</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedIncident.address}</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <p className="mt-1 text-sm text-gray-900">{selectedIncident.description}</p>
-              </div>
-
-              {selectedIncident.contactName && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Contact</label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {selectedIncident.contactName} - {selectedIncident.contactPhone}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setSelectedIncident(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Incident Modal */}
-      {showCreateModal && (
-        <CreateIncidentModal
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            setShowCreateModal(false);
-            fetchData();
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function CreateIncidentModal({
-  onClose,
-  onSuccess,
-}: {
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [formData, setFormData] = useState({
-    buildingId: '',
-    siteName: '',
-    address: '',
-    description: '',
-    priority: 'medium' as 'low' | 'medium' | 'high' | 'critical',
-    contactName: '',
-    contactPhone: '',
-  });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await api.createIncident(formData);
-      onSuccess();
-    } catch (err: any) {
-      alert(err.message || 'Failed to create incident');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-        <h2 className="text-xl font-semibold mb-4">Create New Incident</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Building ID *</label>
-            <input
-              type="text"
-              required
-              value={formData.buildingId}
-              onChange={(e) => setFormData({ ...formData, buildingId: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Site Name *</label>
-            <input
-              type="text"
-              required
-              value={formData.siteName}
-              onChange={(e) => setFormData({ ...formData, siteName: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Address *</label>
-            <input
-              type="text"
-              required
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Description *</label>
-            <textarea
-              required
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Priority</label>
-            <select
-              value={formData.priority}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  priority: e.target.value as any,
-                })
-              }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Contact Name</label>
-            <input
-              type="text"
-              value={formData.contactName}
-              onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Contact Phone</label>
-            <input
-              type="tel"
-              value={formData.contactPhone}
-              onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-            />
-          </div>
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50"
-            >
-              {loading ? 'Creating...' : 'Create Incident'}
-            </button>
-          </div>
-        </form>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Building</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Technician</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {incidents.map((incident) => (
+              <tr key={incident.id}>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">{incident.id}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">{incident.building_id}</td>
+                <td className="px-6 py-4 text-sm">{incident.description}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <select
+                    value={incident.status}
+                    onChange={(e) => handleUpdateStatus(incident.id, e.target.value)}
+                    className="text-sm border rounded px-2 py-1"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {incident.technician?.name || 'Unassigned'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <select
+                    value={incident.assigned_technician_id || ''}
+                    onChange={(e) => handleAssignTechnician(incident.id, parseInt(e.target.value))}
+                    className="border rounded px-2 py-1"
+                  >
+                    <option value="">Assign...</option>
+                    {technicians.map((tech) => (
+                      <option key={tech.id} value={tech.id}>
+                        {tech.name}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
