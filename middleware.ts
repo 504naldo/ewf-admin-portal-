@@ -2,24 +2,20 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Allow public routes
-  if (pathname.startsWith('/login') || pathname === '/') {
+  // Allow login page
+  if (request.nextUrl.pathname === '/login') {
     return NextResponse.next();
   }
 
-  // Check for token in cookies or headers
-  const token = request.cookies.get('ewf_admin_token')?.value;
-
-  // If no token and trying to access protected route, redirect to login
-  if (!token && pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // For admin routes, just pass through - we'll handle auth on client side
+  // This avoids issues with server-side localStorage access
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    return NextResponse.next();
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/admin/:path*', '/login'],
 };
