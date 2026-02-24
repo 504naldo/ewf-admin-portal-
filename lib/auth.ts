@@ -1,7 +1,12 @@
-'use client';
+import api from './api';
 
-const TOKEN_KEY = 'ewf_admin_token';
-const USER_KEY = 'ewf_admin_user';
+const TOKEN_KEY = 'auth_token';
+const USER_KEY = 'auth_user';
+
+export async function login(email: string, password: string) {
+  const response = await api.post('/api/auth/login', { email, password });
+  return response.data;
+}
 
 export function setToken(token: string): void {
   if (typeof window !== 'undefined') {
