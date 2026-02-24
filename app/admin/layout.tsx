@@ -1,9 +1,8 @@
-'use client';
-
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { isAuthenticated, isAdmin, getUser, logout } from '@/lib/auth';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function AdminLayout({
   children,
@@ -20,6 +19,7 @@ export default function AdminLayout({
       router.push('/login');
       return;
     }
+
     setUser(getUser());
     setLoading(false);
   }, [router]);
@@ -46,6 +46,7 @@ export default function AdminLayout({
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
+                <img src="/ewf-logo.png" alt="EWF Logo" className="h-10 w-auto mr-3" />
                 <h1 className="text-xl font-bold text-gray-900">
                   EWF Emergency Call
                 </h1>
