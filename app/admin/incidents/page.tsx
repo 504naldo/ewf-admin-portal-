@@ -4,23 +4,29 @@ import { useState, useEffect } from 'react';
 import { listIncidents, listTechnicians } from '@/lib/api-helpers';
 import Link from 'next/link';
 import StatusBadge from '@/components/StatusBadge';
+import CreateIncidentModal from '@/components/CreateIncidentModal';
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<any[]>([]);
+  const [technicians, setTechnicians] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    loadIncidents();
+    loadData();
   }, []);
 
-  const loadIncidents = async () => {
+  const loadData = async () => {
     try {
-      const data = await listIncidents();
-      setIncidents(data);
+      const [incidentsData, techsData] = await Promise.all([
+        listIncidents(),
+        listTechnicians(),
+      ]);
+      setIncidents(incidentsData);
+      setTechnicians(techsData);
     } catch (error) {
-      console.error('Failed to load incidents:', error);
+      console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
     }
@@ -144,23 +150,13 @@ export default function IncidentsPage() {
         </div>
       </div>
 
-      {/* Create Modal - Simple version, can be enhanced later */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-4">Create New Incident</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Use the mobile app or API to create incidents. This feature is coming soon to the admin portal.
-            </p>
-            <button
-              onClick={() => setShowCreateModal(false)}
-              className="w-full rounded-md bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-300"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Create Incident Modal */}
+      <CreateIncidentModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={loadData}
+        technicians={technicians}
+      />
     </div>
   );
 }
