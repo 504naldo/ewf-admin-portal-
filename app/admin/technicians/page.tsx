@@ -34,8 +34,10 @@ export default function TechniciansPage() {
 
   const filteredTechnicians = technicians.filter((tech) => {
     const search = searchTerm.toLowerCase();
+    // Handle both 'name' and 'Manager User' format
+    const displayName = tech.name || tech['Manager User'] || '';
     return (
-      tech.name?.toLowerCase().includes(search) ||
+      displayName.toLowerCase().includes(search) ||
       tech.email?.toLowerCase().includes(search) ||
       tech.phone?.toLowerCase().includes(search) ||
       tech.role?.toLowerCase().includes(search)
@@ -81,7 +83,7 @@ export default function TechniciansPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                      Name
+                      Technician Name
                     </th>
                     <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                       Email
@@ -108,43 +110,49 @@ export default function TechniciansPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredTechnicians.map((tech) => (
-                      <tr key={tech.id} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                          {tech.name}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-700">
-                          {tech.email}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-700">
-                          {tech.phone || 'N/A'}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-700">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-100 text-accent-800 border border-accent-300">
-                            {tech.role}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm">
-                          {tech.is_available ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300">
-                              Available
+                    filteredTechnicians.map((tech) => {
+                      // Handle different name formats from the API
+                      const displayName = tech.name || tech['Manager User'] || 'Unknown';
+                      const isAvailable = tech.is_available ?? true;
+                      
+                      return (
+                        <tr key={tech.id} className="hover:bg-gray-50">
+                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                            {displayName}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-700">
+                            {tech.email || 'N/A'}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-700">
+                            {tech.phone || 'N/A'}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-700">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-100 text-accent-800 border border-accent-300">
+                              {tech.role || 'technician'}
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
-                              Unavailable
-                            </span>
-                          )}
-                        </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <button
-                            onClick={() => toggleAvailability(tech.id, tech.is_available)}
-                            className="text-primary-600 hover:text-primary-800 font-medium"
-                          >
-                            Toggle
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm">
+                            {isAvailable ? (
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300">
+                                Available
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-300">
+                                Unavailable
+                              </span>
+                            )}
+                          </td>
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                            <button
+                              onClick={() => toggleAvailability(tech.id, isAvailable)}
+                              className="text-primary-600 hover:text-primary-800 font-medium"
+                            >
+                              Toggle
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
