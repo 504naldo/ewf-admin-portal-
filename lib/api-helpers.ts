@@ -65,3 +65,13 @@ export async function listReports(params?: { incident_id?: number }) {
   const response = await api.get('/api/reports', { params });
   return response.data;
 }
+
+export async function createIncident(data: {
+  building_id: string;
+  description: string;
+  priority: string;
+  assigned_technician_id?: number;
+}) {
+  const response = await api.post('/api/incidents', data);
+  return response.data;
+}
