@@ -1,8 +1,9 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { isAuthenticated, isAdmin, getUser, logout } from '@/lib/auth';
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function AdminLayout({
   children,
