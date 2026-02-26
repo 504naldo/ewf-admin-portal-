@@ -71,7 +71,23 @@ export async function createIncident(data: {
   description: string;
   priority: string;
   assigned_technician_id?: number;
+  site?: string;
+  incident_type?: string;
+  caller_name?: string;
+  caller_phone?: string;
+  trigger_routing?: boolean;
 }) {
-  const response = await api.post('/api/incidents', data);
+  // Use tRPC endpoint for creating manual incidents
+  const response = await api.post('/api/trpc/incidents.createManual', {
+    buildingId: data.building_id,
+    site: data.site || data.building_id,
+    incidentType: data.incident_type || 'Manual Incident',
+    description: data.description,
+    priority: data.priority,
+    callerName: data.caller_name,
+    callerPhone: data.caller_phone,
+    assignedTechId: data.assigned_technician_id,
+    triggerRouting: data.trigger_routing || false,
+  });
   return response.data;
 }
