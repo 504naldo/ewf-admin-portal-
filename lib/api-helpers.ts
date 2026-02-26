@@ -36,34 +36,49 @@ export interface Report {
   technician?: Technician;
 }
 
-export async function listIncidents(params?: { status?: string; search?: string }) {
-  const response = await api.get('/api/incidents', { params });
+// Helper function to call tRPC endpoints
+async function callTRPC(procedure: string, input?: any) {
+  const response = await api.post(`/api/trpc/${procedure}`, input || {});
+  
+  // tRPC wraps responses in { result: { data: ... } }
+  if (response.data?.result?.data) {
+    return response.data.result.data;
+  }
+  
   return response.data;
+}
+
+export async function listIncidents(params?: { status?: string; search?: string }) {
+  // Call admin.getAllIncidents tRPC endpoint
+  return await callTRPC('admin.getAllIncidents', params);
 }
 
 export async function getIncident(id: number) {
-  const response = await api.get(`/api/incidents/${id}`);
-  return response.data;
+  return await callTRPC('incidents.getDetails', { id });
 }
 
 export async function updateIncident(id: number, data: Partial<Incident>) {
-  const response = await api.put(`/api/incidents/${id}`, data);
-  return response.data;
+  return await callTRPC('incidents.updateStatus', {
+    incidentId: id,
+    status: data.status,
+  });
 }
 
 export async function listTechnicians() {
-  const response = await api.get('/api/technicians');
-  return response.data;
+  // Call admin.getAllUsers tRPC endpoint
+  return await callTRPC('admin.getAllUsers');
 }
 
 export async function updateTechnician(id: number, data: Partial<Technician>) {
-  const response = await api.put(`/api/technicians/${id}`, data);
-  return response.data;
+  return await callTRPC('admin.updateUser', {
+    userId: id,
+    ...data,
+  });
 }
 
 export async function listReports(params?: { incident_id?: number }) {
-  const response = await api.get('/api/reports', { params });
-  return response.data;
+  // For now, return empty array - reports endpoint needs to be added to backend
+  return [];
 }
 
 export async function createIncident(data: {
@@ -77,8 +92,7 @@ export async function createIncident(data: {
   caller_phone?: string;
   trigger_routing?: boolean;
 }) {
-  // Use tRPC endpoint for creating manual incidents
-  const response = await api.post('/api/trpc/incidents.createManual', {
+  return await callTRPC('incidents.createManual', {
     buildingId: data.building_id,
     site: data.site || data.building_id,
     incidentType: data.incident_type || 'Manual Incident',
@@ -89,5 +103,4 @@ export async function createIncident(data: {
     assignedTechId: data.assigned_technician_id,
     triggerRouting: data.trigger_routing || false,
   });
-  return response.data;
 }
