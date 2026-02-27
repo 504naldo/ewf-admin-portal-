@@ -36,11 +36,23 @@ export interface Report {
   technician?: Technician;
 }
 
-// Helper function to call tRPC endpoints
+// Helper function to call tRPC endpoints with correct HTTP format
 async function callTRPC(procedure: string, input?: any) {
-  const response = await api.post(`/api/trpc/${procedure}`, input || {});
+  // tRPC HTTP format: { "0": { "json": inputData } }
+  const requestBody = {
+    "0": {
+      "json": input || {}
+    }
+  };
   
-  // tRPC wraps responses in { result: { data: ... } }
+  const response = await api.post(`/api/trpc/${procedure}`, requestBody);
+  
+  // tRPC wraps responses in [{ result: { data: ... } }]
+  if (Array.isArray(response.data) && response.data[0]?.result?.data) {
+    return response.data[0].result.data;
+  }
+  
+  // Single response format: { result: { data: ... } }
   if (response.data?.result?.data) {
     return response.data.result.data;
   }
@@ -49,7 +61,6 @@ async function callTRPC(procedure: string, input?: any) {
 }
 
 export async function listIncidents(params?: { status?: string; search?: string }) {
-  // Call admin.getAllIncidents tRPC endpoint
   return await callTRPC('admin.getAllIncidents', params);
 }
 
@@ -65,7 +76,6 @@ export async function updateIncident(id: number, data: Partial<Incident>) {
 }
 
 export async function listTechnicians() {
-  // Call admin.getAllUsers tRPC endpoint
   return await callTRPC('admin.getAllUsers');
 }
 
@@ -77,7 +87,6 @@ export async function updateTechnician(id: number, data: Partial<Technician>) {
 }
 
 export async function listReports(params?: { incident_id?: number }) {
-  // For now, return empty array - reports endpoint needs to be added to backend
   return [];
 }
 
