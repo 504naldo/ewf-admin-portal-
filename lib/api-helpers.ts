@@ -84,7 +84,7 @@ export async function updateIncident(id: number, data: Partial<Incident>) {
   return await callTRPC('incidents.updateStatus', {
     incidentId: id,
     status: data.status,
-  });
+  }, 'POST');
 }
 
 export async function listTechnicians() {
@@ -96,7 +96,7 @@ export async function updateTechnician(id: number, data: Partial<Technician>) {
   return await callTRPC('admin.updateUser', {
     userId: id,
     ...data,
-  });
+  }, 'POST');
 }
 
 export async function listReports(params?: { incident_id?: number }) {
@@ -124,5 +124,5 @@ export async function createIncident(data: {
     callerPhone: data.caller_phone,
     assignedTechId: data.assigned_technician_id,
     triggerRouting: data.trigger_routing || false,
-  });
+  }, 'POST');
 }
