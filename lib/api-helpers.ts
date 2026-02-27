@@ -54,14 +54,18 @@ async function callTRPC(procedure: string, input?: any, method: 'GET' | 'POST' =
     response = await api.post(`/api/trpc/${procedure}`, requestBody);
   }
   
-  // tRPC wraps responses in [{ result: { data: ... } }]
+  // tRPC GET responses: [{ result: { data: { json: actualData } } }]
   if (Array.isArray(response.data) && response.data[0]?.result?.data) {
-    return response.data[0].result.data;
+    const data = response.data[0].result.data;
+    // Unwrap the json wrapper if present
+    return data.json !== undefined ? data.json : data;
   }
   
-  // Single response format: { result: { data: ... } }
+  // tRPC POST responses: { result: { data: { json: actualData } } }
   if (response.data?.result?.data) {
-    return response.data.result.data;
+    const data = response.data.result.data;
+    // Unwrap the json wrapper if present
+    return data.json !== undefined ? data.json : data;
   }
   
   return response.data;
