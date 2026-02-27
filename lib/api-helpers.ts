@@ -61,7 +61,8 @@ async function callTRPC(procedure: string, input?: any) {
 }
 
 export async function listIncidents(params?: { status?: string; search?: string }) {
-  return await callTRPC('admin.getAllIncidents', params);
+  // Use incidents.getAllOpen for listing all open incidents
+  return await callTRPC('incidents.getAllOpen', params);
 }
 
 export async function getIncident(id: number) {
@@ -76,7 +77,8 @@ export async function updateIncident(id: number, data: Partial<Incident>) {
 }
 
 export async function listTechnicians() {
-  return await callTRPC('admin.getAllUsers');
+  // Use users.getAllTechs for listing all technicians
+  return await callTRPC('users.getAllTechs');
 }
 
 export async function updateTechnician(id: number, data: Partial<Technician>) {
