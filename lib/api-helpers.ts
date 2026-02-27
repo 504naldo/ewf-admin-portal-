@@ -37,15 +37,22 @@ export interface Report {
 }
 
 // Helper function to call tRPC endpoints with correct HTTP format
-async function callTRPC(procedure: string, input?: any) {
-  // tRPC HTTP format: { "0": { "json": inputData } }
-  const requestBody = {
-    "0": {
-      "json": input || {}
-    }
-  };
+async function callTRPC(procedure: string, input?: any, method: 'GET' | 'POST' = 'POST') {
+  let response;
   
-  const response = await api.post(`/api/trpc/${procedure}`, requestBody);
+  if (method === 'GET') {
+    // For queries, use GET with input as query params
+    const params = input ? { input: JSON.stringify({ "0": { "json": input } }) } : {};
+    response = await api.get(`/api/trpc/${procedure}`, { params });
+  } else {
+    // For mutations, use POST with input in body
+    const requestBody = {
+      "0": {
+        "json": input || {}
+      }
+    };
+    response = await api.post(`/api/trpc/${procedure}`, requestBody);
+  }
   
   // tRPC wraps responses in [{ result: { data: ... } }]
   if (Array.isArray(response.data) && response.data[0]?.result?.data) {
@@ -61,12 +68,12 @@ async function callTRPC(procedure: string, input?: any) {
 }
 
 export async function listIncidents(params?: { status?: string; search?: string }) {
-  // Use incidents.getAllOpen for listing all open incidents
-  return await callTRPC('incidents.getAllOpen', params);
+  // Use incidents.getAllOpen for listing all open incidents (GET query)
+  return await callTRPC('incidents.getAllOpen', params, 'GET');
 }
 
 export async function getIncident(id: number) {
-  return await callTRPC('incidents.getDetails', { id });
+  return await callTRPC('incidents.getDetails', { id }, 'GET');
 }
 
 export async function updateIncident(id: number, data: Partial<Incident>) {
@@ -77,8 +84,8 @@ export async function updateIncident(id: number, data: Partial<Incident>) {
 }
 
 export async function listTechnicians() {
-  // Use users.getAllTechs for listing all technicians
-  return await callTRPC('users.getAllTechs');
+  // Use users.getAllTechs for listing all technicians (GET query)
+  return await callTRPC('users.getAllTechs', undefined, 'GET');
 }
 
 export async function updateTechnician(id: number, data: Partial<Technician>) {
